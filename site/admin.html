@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - LPCTVHS ALUMNI PORTAL</title><link href="assets/img/logo (2).png" rel="icon">
+<link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+<link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+<style>body{background:#f8f9fa}.hd{background:#008080;color:#fff;padding:15px 0}.card{border:0;box-shadow:0 0 15px rgba(0,0,0,.1)}.btn-teal{background:#008080;color:#fff}.btn-teal:hover{background:#006666;color:#fff}</style></head>
+<body>
+<div id="login" class="container" style="max-width:400px;margin-top:12vh">
+  <div class="card p-4"><div class="text-center mb-3"><img src="assets/img/logo (2).png" height="70"><h4 class="mt-2" style="color:#008080">Admin Login</h4></div>
+  <div id="err" class="alert alert-danger d-none">Invalid username or password</div>
+  <input id="u" class="form-control mb-2" placeholder="Username"><input id="p" type="password" class="form-control mb-3" placeholder="Password">
+  <button class="btn btn-teal w-100" onclick="login()">Login</button></div>
+  <p class="text-center mt-3"><a href="index.html">&larr; Back to Main Site</a></p>
+</div>
+<div id="app" class="d-none">
+  <div class="hd"><div class="container d-flex justify-content-between align-items-center"><h3 class="m-0">Alumni Admin</h3><button class="btn btn-dark" onclick="logout()">Logout</button></div></div>
+  <div class="container my-4">
+    <div class="row g-3 mb-3" id="stats"></div>
+    <ul class="nav nav-tabs mb-3" id="tabs"></ul>
+    <div class="card p-3"><div class="table-responsive"><table class="table table-hover align-middle"><thead id="th"></thead><tbody id="tb"></tbody></table></div></div>
+  </div>
+</div>
+<div class="modal fade" id="m"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="mt"></h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="mb"></div><div class="modal-footer" id="mf"></div></div></div></div>
+<script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/store.js"></script>
+<script>
+// NOTE: this login is client-side only (demo). Anyone can read it in the page source.
+const ADMIN={username:'admin',password:'admin123'};
+let tab='all'; const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const aligned=r=>r.course&&r.strand&&r.gradYear&&r.course===r.strand;
+function login(){ if(u.value===ADMIN.username&&p.value===ADMIN.password){sessionStorage.admin='1';show();}else err.classList.remove('d-none'); }
+function logout(){ sessionStorage.removeItem('admin'); location.reload(); }
+function show(){ login_.classList.add('d-none'); app.classList.remove('d-none'); render(); }
+const login_=document.getElementById('login'); if(sessionStorage.admin) show();
+function render(){
+  const A=DB.get('alumni'),C=DB.get('contact_messages'),al=A.filter(aligned).length,un=C.filter(c=>c.status==='unread').length,pct=A.length?Math.round(al/A.length*100):0;
+  stats.innerHTML=`<div class="col-md-4"><div class="card p-3">Total Alumni<h3>${A.length}</h3></div></div><div class="col-md-4"><div class="card p-3">Course/Strand Aligned<h3>${al} <small class="text-muted">(${pct}%)</small></h3></div></div><div class="col-md-4"><div class="card p-3">Requests<h3>${C.length} <small class="text-danger">${un} unread</small></h3></div></div>`;
+  tabs.innerHTML=[['all','All Alumni',A.length],['aligned','Aligned',al],['nonaligned','Non-Aligned',A.length-al],['requests','Requests',C.length]].map(t=>`<li class="nav-item"><a href="#" class="nav-link ${tab===t[0]?'active':''}" onclick="tab='${t[0]}';render();return false">${t[1]} <span class="badge bg-secondary">${t[2]}</span></a></li>`).join('');
+  if(tab==='requests'){
+    th.innerHTML='<tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Message</th><th>Date</th><th>Status</th><th>Actions</th></tr>';
+    tb.innerHTML=C.slice().reverse().map(c=>`<tr><td>${c.id}</td><td>${esc(c.name)}</td><td>${esc(c.email)}</td><td>${esc(c.phone)}</td><td>${esc(c.message).slice(0,50)}</td><td>${new Date(c.submission_date).toLocaleString()}</td><td><span class="badge ${c.status==='read'?'bg-success':'bg-warning'}">${c.status}</span></td><td><button class="btn btn-sm btn-info" onclick="viewReq(${c.id})"><i class="bi bi-eye"></i></button> <button class="btn btn-sm btn-danger" onclick="del('contact_messages',${c.id})"><i class="bi bi-trash"></i></button></td></tr>`).join('')||'<tr><td colspan=8 class="text-center">No requests</td></tr>';
+  } else {
+    th.innerHTML='<tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>School</th><th>Grad Year</th><th>Course</th><th>Strand</th><th>Age</th><th>DOB</th><th>Actions</th></tr>';
+    const rows=A.filter(r=>tab==='all'||(tab==='aligned')===!!aligned(r)).reverse();
+    const miss=v=>v?esc(v):'<span class="badge bg-danger">Missing</span>';
+    tb.innerHTML=rows.map(r=>{const w=r.course&&r.strand&&r.course!==r.strand?'text-warning fw-bold':'';return `<tr><td>${r.id}</td><td>${esc(r.fullName)}</td><td>${esc(r.email)}</td><td>${esc(r.phone)}</td><td>${esc(r.currentSchool)}</td><td>${miss(r.gradYear)}</td><td class="${w}">${miss(r.course)}</td><td class="${w}">${miss(r.strand)}</td><td>${r.age}</td><td>${esc(r.dateOfBirth)}</td><td class="text-nowrap"><button class="btn btn-sm btn-info" onclick="viewAl(${r.id})"><i class="bi bi-eye"></i></button> <button class="btn btn-sm btn-teal" onclick="editAl(${r.id})"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-danger" onclick="del('alumni',${r.id})"><i class="bi bi-trash"></i></button></td></tr>`}).join('')||'<tr><td colspan=11 class="text-center">No alumni records found</td></tr>';
+  }
+}
+function modal(t,b,f=''){ mt.textContent=t; mb.innerHTML=b; mf.innerHTML=f+'<button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>'; bootstrap.Modal.getOrCreateInstance(document.getElementById('m')).show(); }
+function hide(){ bootstrap.Modal.getInstance(document.getElementById('m')).hide(); }
+function viewAl(id){ const r=DB.get('alumni').find(x=>x.id===id); modal('Alumni Details',Object.entries(r).map(([k,v])=>`<p class="mb-1"><strong>${k}:</strong> ${esc(v)}</p>`).join('')); }
+function viewReq(id){ const a=DB.get('contact_messages'),r=a.find(x=>x.id===id); r.status='read'; DB.set('contact_messages',a); modal('Message from '+esc(r.name),`<p>${esc(r.email)} | ${esc(r.phone)}</p><div class="p-3 bg-light" style="white-space:pre-wrap">${esc(r.message)}</div>`); render(); }
+function editAl(id){ const r=DB.get('alumni').find(x=>x.id===id);
+  modal('Update Alumni',['fullName','email','phone','currentSchool'].map(k=>`<label class="form-label mt-2">${k}</label><input class="form-control" id="e_${k}" value="${esc(r[k])}">`).join('')+'<small class="text-muted">Grad year, course, strand, age and DOB are read-only.</small>',`<button class="btn btn-teal" onclick="saveAl(${id})">Update Record</button>`); }
+function saveAl(id){ const a=DB.get('alumni'),r=a.find(x=>x.id===id); if(!e_fullName.value||!e_email.value) return alert('Full Name and Email are required'); ['fullName','email','phone','currentSchool'].forEach(k=>r[k]=document.getElementById('e_'+k).value); DB.set('alumni',a); hide(); render(); }
+function del(k,id){ if(confirm('Are you sure you want to delete this record?')){ DB.set(k,DB.get(k).filter(x=>x.id!==id)); render(); } }
+</script></body></html>
